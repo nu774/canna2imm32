@@ -552,10 +552,15 @@ int imewrapper_close_context(int id, buffer_t *cbuf)
 */
 int imewrapper_get_dictionary_list(int id, buffer_t *cbuf)
 {
-    cannaheader_t *header = (cannaheader_t *)cbuf->buf;
-
-    header->datalen = LSBMSB16(2);
-    header->err.e16 = 0;
+    cannaheader_t *header;
+    
+    buffer_check(cbuf, 32);
+    header = (cannaheader_t *)cbuf->buf;
+    header->type = 0x06;
+    header->extra = 0;
+    header->datalen = LSBMSB16(9);
+    header->err.e16 = LSBMSB16(1);
+    strcpy((char*)header + 6, "dummy\0");
 
     return 1;
 }
@@ -565,10 +570,15 @@ int imewrapper_get_dictionary_list(int id, buffer_t *cbuf)
 */
 int imewrapper_get_directory_list(int id, buffer_t *cbuf)
 {
-    cannaheader_t *header = (cannaheader_t *)cbuf->buf;
-
-    header->datalen = LSBMSB16(2);
-    header->err.e16 = 0;
+    cannaheader_t *header;
+    
+    buffer_check(cbuf, 32);
+    header = (cannaheader_t *)cbuf->buf;
+    header->type = 0x07;
+    header->extra = 0;
+    header->datalen = LSBMSB16(9);
+    header->err.e16 = LSBMSB16(1);
+    strcpy((char*)header + 6, "dummy\0");
 
     return 1;
 }
@@ -617,10 +627,15 @@ int imewrapper_remount_dictionary(int id, buffer_t *cbuf)
 */
 int imewrapper_get_mountdictionary_list(int id, buffer_t *cbuf)
 {
-    cannaheader_t *header = (cannaheader_t *)cbuf->buf;
-
-    header->datalen = LSBMSB16(2);
-    header->err.e16 = 0;
+    cannaheader_t *header;
+    
+    buffer_check(cbuf, 32);
+    header = (cannaheader_t *)cbuf->buf;
+    header->type = 0x0b;
+    header->extra = 0;
+    header->datalen = LSBMSB16(9);
+    header->err.e16 = LSBMSB16(1);
+    strcpy((char*)header + 6, "dummy\0");
 
     return 1;
 }
