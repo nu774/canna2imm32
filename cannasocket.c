@@ -44,6 +44,8 @@ extern char inetmode;
 #define BUFSIZE 4096
 #define ACCESS_FILE "/etc/hosts.canna2imm32"
 
+static int allowed_hosts[BUFSIZE];
+
 /*
  * canna_socket_open_unix : unix ドメインのソケットを生成する
  *                        : ファイルディスクリプタを返す
@@ -86,6 +88,35 @@ static int canna_socket_open_unix()
   return fd;
 }
 
+static void load_hosts_canna()
+{
+    int i = 0;
+    char buf[MAXDATA];
+    struct hostent *hp;
+    FILE *fp;
+
+    /* check my host name */
+    if (gethostname(buf, MAXDATA) == 0 && (hp = gethostbyname(buf)) != NULL)
+        allowed_hosts[i++] = *(int*)(hp->h_addr_list[0]);
+
+    /* check "localhost" */
+    if ((hp = gethostbyname("localhost")) != NULL)
+        allowed_hosts[i++] = *(int*)(hp->h_addr_list[0]);
+
+    /* check /etc/hosts.canna */
+    if ((fp = fopen(ACCESS_FILE, "r")) != NULL) {
+        while (i < BUFSIZE && fgets(buf, MAXDATA, fp)) {
+            char *wp;
+            if ((wp = strpbrk(buf, ":\r\n")) != 0)
+                *wp = 0;
+            if ((hp = gethostbyname(buf)) != NULL)
+                allowed_hosts[i++] = *(int*)(hp->h_addr_list[0]);
+        }
+        fclose(fp);
+    }
+    allowed_hosts[i] = 0;
+}
+
 /*
  * canna_socket_open_inet : inet ドメインのソケットを生成する
  *                        : ファイルディスクリプタを返す
@@ -106,7 +137,7 @@ static int canna_socket_open_inet()
   
 #ifdef SO_REUSEADDR
   setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char *)(&one),
-         sizeof (int));
+             sizeof (int));
 #endif
 
   s = getservbyname(CANNA_SERVICE_NAME, "tcp");
@@ -127,6 +158,7 @@ static int canna_socket_open_inet()
     return -1;
   }
 
+  load_hosts_canna();
   return fd;
 }
 
@@ -196,60 +228,13 @@ static int canna_socket_accept_new_connection(int fd)
   { /* このブロックが INET  Y.A. */
     memcpy(&addr_in, (struct sockaddr *)(&addr_un),sizeof(struct sockaddr_in));
 
-    /* >> /etc/hosts.canna 対応 */
-    i = 0;  /* addr_list のオフセット */
-    /* check my host name */
-    if (gethostname(buf, MAXDATA) == 0)
-    {
-      if ((hp = gethostbyname(buf)) != NULL)
-      {
-        ip = (int *)(hp->h_addr_list[0]);
-        addr_list[i] = *ip;
-        i++;
-      }
-    }
-
-    /* check "localhost" */
-    if ((hp = gethostbyname("localhost")) != NULL)
-    {
-      ip = (int *)(hp->h_addr_list[0]);
-      addr_list[i] = *ip;
-      i++;
-    }
-
-    /* check /etc/hosts.canna */
-    if( (fp = fopen( ACCESS_FILE, "r" )) != (FILE *)NULL )
-    {
-      while( fgets( (char *)buf, BUFSIZE, fp ) != (char *)NULL )
-      {
-        buf[ strlen( (char *)buf )-1 ] = '\0' ;
-        wp = buf ;
-        if( !strtok( (char *)wp, ":" ) )
-          continue ;
-
-        if ((hp = gethostbyname(wp)) != NULL)
-        {
-          ip = (int *)(hp->h_addr_list[0]);
-          if (i < BUFSIZE - 1)
-          {
-            addr_list[i] = *ip;
-            i++;
-          } else
-            break;  /* これ以上入らない */
-        }
-      }
-    }
-
-    addr_list[i] = 0;   /* terminate */
-
     /*  */
-    for (i=0; i<BUFSIZE; i++)
-    {
-      if (addr_list[i] == 0) break;
-      if (addr_in.sin_addr.s_addr == addr_list[i])
-      {
-        m_netaddr2ascii(addr_in.sin_addr.s_addr, buf);
+    m_netaddr2ascii(addr_in.sin_addr.s_addr, buf);
 
+    for (i = 0; allowed_hosts[i]; i++)
+    {
+      if (addr_in.sin_addr.s_addr == allowed_hosts[i])
+      {
         hp = gethostbyaddr((char *)&addr_in.sin_addr, sizeof(struct in_addr), AF_INET);
 
         if (hp && hp->h_name)
@@ -262,8 +247,6 @@ static int canna_socket_accept_new_connection(int fd)
 
     if (host == NULL)
     {
-      m_netaddr2ascii(addr_in.sin_addr.s_addr, buf);
-
       m_msg("REFUSE THE CONNECTION REQUEST FROM %s.\n", buf);
       close(newfd);
       return -1;
