@@ -116,6 +116,12 @@ int init_all()
 {
     int canna_ufd, canna_ifd;
 
+    if (daemonizemode == 1)
+    {
+        m_daemonize(ESECANNA_PID_PATH);
+        m_msg("%s started by UID[%d]\n", ESECANNA_VERSION, getuid());
+    }
+
     init_private();
 
     if (canna_socket_open(&canna_ufd, &canna_ifd) < 0)
@@ -128,12 +134,6 @@ int init_all()
         m_system_register_file(canna_ifd);
 
     m_message_init(logmode ? ESECANNA_LOG_PATH : NULL);
-
-    if (daemonizemode == 1)
-    {
-        m_daemonize(ESECANNA_PID_PATH);
-        m_msg("%s started by UID[%d]\n", ESECANNA_VERSION, getuid());
-    }
 
     m_setup_signal((signalhandler_t)sig_terminate);
 
