@@ -1385,7 +1385,7 @@ m_msg_dbg("IMN_OPENSTATUSWINDOW\n");
                     break;
                 case IMN_CLOSESTATUSWINDOW:
 m_msg_dbg("IMN_CLOSESTATUSWINDOW\n");
-#if 1
+#if 0
                     /* どうもinactiveになるとIMN_CLOSESTATUSWINDOWが来て */
                     /* かな漢が出来なくなるので入れる。 */
                     if (SetActiveWindow(hWnd_IMM) == NULL)
@@ -1538,7 +1538,8 @@ void mw_IMMWindowMsgLoop(void* pParam)  /* pParam == NULL */
 {
     MSG msg;
     HWND hwnd;
-    hwnd = CreateWindow("WinIMM32", "", WS_POPUPWINDOW  | WS_SYSMENU, 0,0,0,0, NULL, 0, 0, 0);  /* HWND_MESSAGEウィンドウは入力を受け付けないらしい（ImmXXX系のAPIを受け付けない）  */
+    hwnd = CreateWindowEx(WS_EX_PALETTEWINDOW, "WinIMM32", "",
+                          WS_POPUPWINDOW, 0,0,0,0, NULL, 0, 0, 0);  /* HWND_MESSAGEウィンドウは入力を受け付けないらしい（ImmXXX系のAPIを受け付けない）  */
     if (hwnd == 0)
     {
         wm_create_done = 1;
@@ -1550,7 +1551,9 @@ void mw_IMMWindowMsgLoop(void* pParam)  /* pParam == NULL */
     }
 
     SetWindowText(hwnd, "Canna2IMM32");
+#if 0
     ShowWindow(hwnd, SW_SHOW);  /* どうやらShowWindow()しないとImmSetCompositionString()できないらしい  */
+#endif
 
     while (GetMessage(&msg, NULL, 0, 0))
     {
@@ -1860,6 +1863,9 @@ int imm32wrapper_begin_convert(int id, buffer_t *cbuf)
 
     if (cx->fIME == 0)
         mw_open_imm32(id, cx, client[cx->client_id].user);
+
+    if (!GetActiveWindow())
+        SetActiveWindow(hWnd_IMM);
 
     if (cx->fIME != 0)
     {
