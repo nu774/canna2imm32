@@ -141,7 +141,7 @@ int canna_socket_open(int *ufd, int *ifd)
   if ((canna_inetfd = canna_socket_open_inet()) == -1)
     m_msg("inet domain not created.\n");
 
-  if (canna_unixfd == -1)
+  if (!inetmode && canna_unixfd == -1)
     return -1;
   if ((inetmode == 1) && (canna_inetfd == -1))
     return -1;
@@ -154,11 +154,13 @@ int canna_socket_open(int *ufd, int *ifd)
 
 int canna_socket_close()
 {
-  close(canna_unixfd);
+  if (canna_unixfd != -1) {
+    close(canna_unixfd);
+    unlink(CANNA_UNIX_DOMAIN_PATH);
+  }
   if (inetmode == 1)
     close(canna_inetfd);
 
-  unlink(CANNA_UNIX_DOMAIN_PATH);
 
   return 0;
 }
